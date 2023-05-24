@@ -14,10 +14,15 @@ using System.Threading;
 using System.Net.Http;
 using System.Net.Http.Headers;
 
+#!markdown
+
+Change the below code so messages are send with your username.
+
 #!csharp
 
 var bearer = System.Environment.GetEnvironmentVariable("OpenAIBearer",EnvironmentVariableTarget.User);
 string url = "https://api.openai.com/v1/chat/completions";
+var userName = "jeniviala";
 
 #!markdown
 
@@ -114,6 +119,10 @@ public class ChatGptResponse
     public UsageClass Usage { get; set; }
 }
 
+#!markdown
+
+Just run the code below, and input some messages to chat-gpt, in the end all messages are going to be displayed.
+
 #!csharp
 
 var jsonOptions = new JsonSerializerOptions()
@@ -135,7 +144,7 @@ var message = new ChatGptRequest
 {
     Model = "gpt-3.5-turbo",
     Messages = messages,
-    User = "jeniviala",
+    User = userName,
 };
 
 using(var client = new HttpClient())
@@ -166,7 +175,7 @@ using(var client = new HttpClient())
         {
             messages.Add(new Message
             {
-                Name = "jeniviala",
+                Name = user,
                 Content = userImput,
                 Role = "user",
             });
