@@ -1,0 +1,183 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"languageName":"csharp","name":"csharp"}]}}
+
+#!markdown
+
+# Testing openai
+
+#!csharp
+
+// Installing libraries
+using System.Text.Json;
+using System.Threading;
+using System.Net.Http;
+using System.Net.Http.Headers;
+
+#!csharp
+
+var bearer = System.Environment.GetEnvironmentVariable("OpenAIBearer",EnvironmentVariableTarget.User);
+string url = "https://api.openai.com/v1/chat/completions";
+
+#!markdown
+
+## Request Model
+```json
+{
+    "model": "gpt-3.5-turbo",
+    "messages": [{"role": "user", "content": "Hello!", "name":"username"}],
+    "temperature": 1,
+    "top_p": 1,
+    "n": 1,
+    "stream": false,
+    "stop": null,
+    "max_tokens": 100,
+    "presence_penalty": 0,
+    "frequency_penalty" : 0,
+    "logit_bias": null,
+    "user": "username"
+}
+```
+
+#!csharp
+
+public class Message
+{
+    public string Role{ get; set; }
+    public string Content{ get; set; }
+    public string Name { get; set; }
+}
+
+public class ChatGptRequest
+{
+    public string Model { get; set; }
+    public List<Message> Messages { get; set; }
+    public double? Temperature { get; set; }
+    public double? Top_p { get; set; }
+    public int? N { get; set; }
+    public bool? Stream { get; set; }
+    public string Stop { get; set; }
+    public int? Max_Tokens { get; set; }
+    public double? Presence_Penalty { get; set; }
+    public double? Frequency_Penalty { get; set; }
+    public object Logit_Bias { get; set; }
+    public string User { get; set; }
+}
+
+#!markdown
+
+## Response Model
+
+``` JSON
+{
+  "id": "chatcmpl-123",
+  "object": "chat.completion",
+  "created": 1677652288,
+  "choices": [{
+    "index": 0,
+    "message": {
+      "role": "assistant",
+      "content": "\n\nHello there, how may I assist you today?",
+    },
+    "finish_reason": "stop"
+  }],
+  "usage": {
+    "prompt_tokens": 9,
+    "completion_tokens": 12,
+    "total_tokens": 21
+  }
+}
+```
+
+#!csharp
+
+public class UsageClass
+{
+    public int Prompt_tokens { get; set; }
+    public int Completion_tokens { get; set; }
+    public int Total_tokens { get; set; }
+}
+
+public class MessageResponse
+{
+    public Message message { get; set; }
+    public int Index { get; set; }
+    public string Finish_reason { get; set; }
+}
+
+public class ChatGptResponse
+{
+    public string Id { get; set; }
+    public string Object { get; set; }
+    public int Created { get; set; }
+    public IEnumerable<MessageResponse> Choices { get; set; }
+    public UsageClass Usage { get; set; }
+}
+
+#!csharp
+
+var jsonResponse = """
+{
+  "id": "chatcmpl-123",
+  "object": "chat.completion",
+  "created": 1677652288,
+  "choices": [{
+    "index": 0,
+    "message": {
+      "role": "assistant",
+      "content": "\n\nHello there, how may I assist you today?",
+    },
+    "finish_reason": "stop"
+  }],
+  "usage": {
+    "prompt_tokens": 9,
+    "completion_tokens": 12,
+    "total_tokens": 21
+  }
+}
+""";
+Console.WriteLine(jsonResponse);
+
+var options = new JsonSerializerOptions()
+{
+    AllowTrailingCommas = true,
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+};
+
+var obj = JsonSerializer.Deserialize<ChatGptResponse>(jsonResponse, options);
+obj
+
+#!csharp
+
+var messages =  new List<Message>
+{
+    new Message{
+        Role = "system",
+        Content = "You are a helpful assistant.",
+    }
+};
+
+var message = new ChatGptRequest
+{
+    Model = "gpt-3.5-turbo",
+    Messages = messages,
+    User = "jeniviala",
+};
+
+var jsonMessage = JsonSerializer.Serialize(message, options);
+jsonMessage
+
+#!csharp
+
+var client = new HttpClient();
+var httpRequestMessage = new HttpRequestMessage(HttpMethod.Post, url);
+httpRequestMessage.Content = new StringContent(jsonMessage, Encoding.UTF8, "application/json");
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
+var result = await client.SendAsync(httpRequestMessage);
+
+#!csharp
+
+var contentString = await result.Content.ReadAsStringAsync();
+var objContent = JsonSerializer.Deserialize<ChatGptResponse>(contentString, options); 
+objContent
