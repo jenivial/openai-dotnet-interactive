@@ -116,46 +116,19 @@ public class ChatGptResponse
 
 #!csharp
 
-var jsonResponse = """
-{
-  "id": "chatcmpl-123",
-  "object": "chat.completion",
-  "created": 1677652288,
-  "choices": [{
-    "index": 0,
-    "message": {
-      "role": "assistant",
-      "content": "\n\nHello there, how may I assist you today?",
-    },
-    "finish_reason": "stop"
-  }],
-  "usage": {
-    "prompt_tokens": 9,
-    "completion_tokens": 12,
-    "total_tokens": 21
-  }
-}
-""";
-Console.WriteLine(jsonResponse);
-
-var options = new JsonSerializerOptions()
+var jsonOptions = new JsonSerializerOptions()
 {
     AllowTrailingCommas = true,
     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
 };
 
-var obj = JsonSerializer.Deserialize<ChatGptResponse>(jsonResponse, options);
-obj
-
-#!csharp
-
 var messages =  new List<Message>
 {
     new Message{
         Role = "system",
         Content = "You are a helpful assistant.",
-    }
+    },
 };
 
 var message = new ChatGptRequest
@@ -165,19 +138,52 @@ var message = new ChatGptRequest
     User = "jeniviala",
 };
 
-var jsonMessage = JsonSerializer.Serialize(message, options);
-jsonMessage
+using(var client = new HttpClient())
+{
+    var userImput = string.Empty;
+    var chatGptResponse = string.Empty;
 
-#!csharp
+    do
+    {
+        
+        try
+        {
+            var prompt = "Send a chat-gpt command, cancel to return";
+    
+            if(!string.IsNullOrEmpty(chatGptResponse))
+            {
+                prompt = $"ChatGptReponse:\n{chatGptResponse} \n" + prompt;
+            }
+            
+            userImput = await GetInputAsync(prompt);
+        }
+        catch(Exception ex)
+        {
+            userImput = "cancel";
+        }
 
-var client = new HttpClient();
-var httpRequestMessage = new HttpRequestMessage(HttpMethod.Post, url);
-httpRequestMessage.Content = new StringContent(jsonMessage, Encoding.UTF8, "application/json");
-client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
-var result = await client.SendAsync(httpRequestMessage);
+        if(userImput != "cancel")
+        {
+            messages.Add(new Message
+            {
+                Name = "jeniviala",
+                Content = userImput,
+                Role = "user",
+            });
 
-#!csharp
+            var jsonMessage = JsonSerializer.Serialize(message, jsonOptions);
+            var httpRequestMessage = new HttpRequestMessage(HttpMethod.Post, url);
+            httpRequestMessage.Content = new StringContent(jsonMessage, Encoding.UTF8, "application/json");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
+            var result = await client.SendAsync(httpRequestMessage);
+            var contentString = await result.Content.ReadAsStringAsync();
+            var objContent = JsonSerializer.Deserialize<ChatGptResponse>(contentString, jsonOptions); 
 
-var contentString = await result.Content.ReadAsStringAsync();
-var objContent = JsonSerializer.Deserialize<ChatGptResponse>(contentString, options); 
-objContent
+            messages.Add(objContent.Choices.First().message);
+            chatGptResponse = objContent.Choices.First().message.Content;
+        }
+    }
+    while(!string.Equals(userImput,"cancel"));
+}
+
+messages
