@@ -175,7 +175,7 @@ using(var client = new HttpClient())
         {
             messages.Add(new Message
             {
-                Name = user,
+                Name = userName,
                 Content = userImput,
                 Role = "user",
             });
